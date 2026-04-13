@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
                         handler.postDelayed(new Runnable() {
                             @Override
                             public void run() { loadNextTrack(); }
-                        }, 2000);
+                        }, 3000);
                     }
                 });
             }
@@ -136,7 +136,7 @@ public class MainActivity extends Activity {
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() { clickAddToPlaylist(view); }
-                    }, 2500);
+                    }, 4000);
                 }
             }
 
@@ -283,7 +283,7 @@ public class MainActivity extends Activity {
             "        if (target) {" +
             "          target.click();" +
             "          toast('Track " + trackNum + " added!', true);" +
-            "          setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 1500);" +
+            "          setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 3000);" +
             "        } else {" +
             "          toast('Playlist not found');" +
             "          AndroidBridge.onError('no playlist');" +
