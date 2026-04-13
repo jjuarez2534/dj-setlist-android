@@ -16,11 +16,15 @@ import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient.FileChooserParams;
 import android.graphics.Color;
+import android.view.View;
+import android.widget.FrameLayout;
 import org.json.JSONArray;
 
 public class MainActivity extends Activity {
 
     private WebView webView;
+    private WebView scLoginView;
+    private FrameLayout container;
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST = 1;
     private static final String APP_URL = "https://jjuarez2534.github.io/dj-setlist";
@@ -38,71 +42,26 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         getWindow().setStatusBarColor(Color.parseColor("#FF5500"));
 
-        webView = new WebView(this);
-        setContentView(webView);
+        container = new FrameLayout(this);
+        setContentView(container);
 
-        WebSettings settings = webView.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setUserAgentString(
-            "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-        );
-
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
-
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                if (isProcessing && url.contains("soundcloud.com") && !url.contains("github.io")) {
-                    handler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            clickAddToPlaylist(view);
-                        }
-                    }, 2500);
-                }
-            }
-
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                if (url.contains("github.io") || url.contains("workers.dev") ||
-                    url.contains("soundcloud.com")) {
-                    return false;
-                }
-                try {
-                    startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()));
-                } catch (Exception e) {}
-                return true;
-            }
-        });
-
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback,
-                    FileChooserParams params) {
-                filePathCallback = callback;
-                Intent intent = params.createIntent();
-                startActivityForResult(intent, FILE_CHOOSER_REQUEST);
-                return true;
-            }
-
-            @Override
-            public void onPermissionRequest(PermissionRequest request) {
-                request.grant(request.getResources());
-            }
-        });
+        webView = createWebView();
+        container.addView(webView, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ));
 
         webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void openSoundCloudLogin() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showSoundCloudLogin();
+                    }
+                });
+            }
+
             @android.webkit.JavascriptInterface
             public void onPlaylistAdded() {
                 handler.post(new Runnable() {
@@ -111,9 +70,7 @@ public class MainActivity extends Activity {
                         successCount++;
                         handler.postDelayed(new Runnable() {
                             @Override
-                            public void run() {
-                                loadNextTrack();
-                            }
+                            public void run() { loadNextTrack(); }
                         }, 2000);
                     }
                 });
@@ -123,9 +80,7 @@ public class MainActivity extends Activity {
             public void onError(String msg) {
                 handler.post(new Runnable() {
                     @Override
-                    public void run() {
-                        loadNextTrack();
-                    }
+                    public void run() { loadNextTrack(); }
                 });
             }
 
@@ -152,6 +107,104 @@ public class MainActivity extends Activity {
         }, "AndroidBridge");
 
         webView.loadUrl(APP_URL);
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private WebView createWebView() {
+        WebView wv = new WebView(this);
+        WebSettings settings = wv.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setUserAgentString(
+            "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+        );
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true);
+
+        wv.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (isProcessing && url.contains("soundcloud.com") && !url.contains("github.io")) {
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() { clickAddToPlaylist(view); }
+                    }, 2500);
+                }
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (url.contains("github.io") || url.contains("workers.dev") ||
+                    url.contains("soundcloud.com")) {
+                    return false;
+                }
+                try { startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl())); }
+                catch (Exception e) {}
+                return true;
+            }
+        });
+
+        wv.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> callback,
+                    FileChooserParams params) {
+                filePathCallback = callback;
+                Intent intent = params.createIntent();
+                startActivityForResult(intent, FILE_CHOOSER_REQUEST);
+                return true;
+            }
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                request.grant(request.getResources());
+            }
+        });
+
+        return wv;
+    }
+
+    private void showSoundCloudLogin() {
+        scLoginView = createWebView();
+        scLoginView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                if (url.contains("soundcloud.com") && !url.contains("signin") &&
+                    !url.contains("login") && !url.contains("connect")) {
+                    CookieManager.getInstance().flush();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() { closeSoundCloudLogin(); }
+                    }, 1500);
+                }
+            }
+        });
+
+        container.addView(scLoginView, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+        scLoginView.loadUrl("https://soundcloud.com/signin");
+    }
+
+    private void closeSoundCloudLogin() {
+        if (scLoginView != null) {
+            container.removeView(scLoginView);
+            scLoginView.destroy();
+            scLoginView = null;
+            webView.evaluateJavascript(
+                "if(window.showToast) showToast('Signed in to SoundCloud!', 'success');", null
+            );
+        }
     }
 
     private void loadNextTrack() {
@@ -182,35 +235,34 @@ public class MainActivity extends Activity {
             "    document.body.appendChild(el);" +
             "  }" +
             "  toast('Adding track " + trackNum + " of " + total + "...');" +
-            "  function findAndClick(selector, fallbackText) {" +
+            "  function findBtn(selector, text) {" +
             "    var el = document.querySelector(selector);" +
-            "    if (!el && fallbackText) {" +
+            "    if (!el && text) {" +
             "      var all = document.querySelectorAll('button, [role=menuitem], li');" +
             "      for (var i = 0; i < all.length; i++) {" +
-            "        if (all[i].textContent.trim().toLowerCase().includes(fallbackText.toLowerCase())) {" +
+            "        if ((all[i].textContent||'').trim().toLowerCase().includes(text.toLowerCase())) {" +
             "          el = all[i]; break;" +
             "        }" +
             "      }" +
             "    }" +
             "    return el;" +
             "  }" +
-            "  function tryAddToPlaylist(attempt) {" +
+            "  function tryAdd(attempt) {" +
             "    attempt = attempt || 0;" +
-            "    if (attempt > 5) { toast('Could not find controls'); AndroidBridge.onError('timeout'); return; }" +
-            "    var moreBtn = findAndClick('.sc-button-more', 'more');" +
-            "    if (!moreBtn) { setTimeout(function(){ tryAddToPlaylist(attempt+1); }, 1000); return; }" +
+            "    if (attempt > 6) { toast('Could not find controls'); AndroidBridge.onError('timeout'); return; }" +
+            "    var moreBtn = findBtn('.sc-button-more', 'more');" +
+            "    if (!moreBtn) { setTimeout(function(){ tryAdd(attempt+1); }, 1000); return; }" +
             "    moreBtn.click();" +
             "    setTimeout(function() {" +
-            "      var addBtn = findAndClick('[class*=addTo]', 'add to playlist');" +
-            "      if (!addBtn) addBtn = findAndClick('[class*=playlist]', 'playlist');" +
+            "      var addBtn = findBtn(null, 'add to playlist');" +
+            "      if (!addBtn) addBtn = findBtn(null, 'add to next');" +
             "      if (!addBtn) { toast('Add to playlist not found'); AndroidBridge.onError('no add btn'); return; }" +
             "      addBtn.click();" +
             "      setTimeout(function() {" +
-            "        var plItems = document.querySelectorAll('[class*=playlist] li, [class*=addTo] li, .sc-list-item');" +
+            "        var plItems = document.querySelectorAll('[class*=addToPlaylist] li, [class*=playlist] li, .sc-list-item');" +
             "        var target = null;" +
-            "        var plTitle = '" + pl + "';" +
             "        for (var i = 0; i < plItems.length; i++) {" +
-            "          if (plItems[i].textContent.includes(plTitle)) { target = plItems[i]; break; }" +
+            "          if ((plItems[i].textContent||'').includes('" + pl + "')) { target = plItems[i]; break; }" +
             "        }" +
             "        if (!target && plItems.length > 0) target = plItems[0];" +
             "        if (target) {" +
@@ -218,13 +270,13 @@ public class MainActivity extends Activity {
             "          toast('Track " + trackNum + " added!', true);" +
             "          setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 1000);" +
             "        } else {" +
-            "          toast('Playlist list not found');" +
+            "          toast('Playlist not found in menu');" +
             "          AndroidBridge.onError('no playlist items');" +
             "        }" +
             "      }, 1500);" +
             "    }, 800);" +
             "  }" +
-            "  tryAddToPlaylist(0);" +
+            "  tryAdd(0);" +
             "})();";
 
         view.evaluateJavascript(script, null);
@@ -259,7 +311,9 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (isProcessing) {
+        if (scLoginView != null) {
+            closeSoundCloudLogin();
+        } else if (isProcessing) {
             isProcessing = false;
             webView.loadUrl(APP_URL);
         } else if (webView.canGoBack()) {
