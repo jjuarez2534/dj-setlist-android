@@ -262,21 +262,22 @@ public class MainActivity extends Activity {
             "      addBtn.click();" +
             "      setTimeout(function() {" +
             "        var plTitle = '" + pl + "';" +
-            "        var allItems = document.querySelectorAll('li, [role=option], [class*=item]');" +
             "        var target = null;" +
-            "        for (var i = 0; i < allItems.length; i++) {" +
-            "          var txt = (allItems[i].textContent || '').trim();" +
-            "          if (plTitle && txt.includes(plTitle)) { target = allItems[i]; break; }" +
+            "        var rows = document.querySelectorAll('li, [class*=item], [class*=row], [class*=playlist]');" +
+            "        for (var i = 0; i < rows.length; i++) {" +
+            "          var rowText = (rows[i].textContent || '').trim();" +
+            "          if (rowText.includes(plTitle)) {" +
+            "            var btn = rows[i].querySelector('button');" +
+            "            if (btn) { target = btn; break; }" +
+            "          }" +
             "        }" +
             "        if (!target) {" +
-            "          var checkboxes = document.querySelectorAll('[class*=playlist] label, [class*=addTo] label');" +
-            "          if (checkboxes.length > 0) {" +
-            "            for (var j = 0; j < checkboxes.length; j++) {" +
-            "              if (plTitle && (checkboxes[j].textContent||'').includes(plTitle)) {" +
-            "                target = checkboxes[j]; break;" +
-            "              }" +
+            "          var allBtns = document.querySelectorAll('button');" +
+            "          for (var j = 0; j < allBtns.length; j++) {" +
+            "            var btnTxt = (allBtns[j].textContent || '').toLowerCase();" +
+            "            if (btnTxt.includes('add to playlist') || btnTxt.includes('add to set')) {" +
+            "              target = allBtns[j]; break;" +
             "            }" +
-            "            if (!target) target = checkboxes[0];" +
             "          }" +
             "        }" +
             "        if (target) {" +
@@ -284,12 +285,8 @@ public class MainActivity extends Activity {
             "          toast('Track " + trackNum + " added!', true);" +
             "          setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 1500);" +
             "        } else {" +
-            "          toast('Playlist menu not found - retrying');" +
-            "          setTimeout(function() {" +
-            "            var items2 = document.querySelectorAll('li, [role=option]');" +
-            "            if (items2.length > 0) { items2[0].click(); AndroidBridge.onPlaylistAdded(); }" +
-            "            else AndroidBridge.onError('no items');" +
-            "          }, 1000);" +
+            "          toast('Playlist not found');" +
+            "          AndroidBridge.onError('no playlist');" +
             "        }" +
             "      }, 2000);" +
             "    }, 1000);" +
