@@ -71,7 +71,7 @@ public class MainActivity extends Activity {
                         handler.postDelayed(new Runnable() {
                             @Override
                             public void run() { loadNextTrack(); }
-                        }, 3000);
+                        }, 5000);
                     }
                 });
             }
@@ -283,7 +283,18 @@ public class MainActivity extends Activity {
             "        if (target) {" +
             "          target.click();" +
             "          toast('Track " + trackNum + " added!', true);" +
-            "          setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 3000);" +
+            "          setTimeout(function(){" +
+            "            var closeBtn = document.querySelector('.modal__closeButton, [aria-label=\"Close\"], .sc-close-icon, button[title=\"Close\"]');" +
+            "            if (!closeBtn) {" +
+            "              var btns = document.querySelectorAll('button');" +
+            "              for (var k=0; k<btns.length; k++) {" +
+            "                var t = (btns[k].textContent || btns[k].getAttribute('aria-label') || '').toLowerCase();" +
+            "                if (t.includes('close') || t.includes('done') || t.includes('save')) { closeBtn = btns[k]; break; }" +
+            "              }" +
+            "            }" +
+            "            if (closeBtn) closeBtn.click();" +
+            "            setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 2000);" +
+            "          }, 2000);" +
             "        } else {" +
             "          toast('Playlist not found');" +
             "          AndroidBridge.onError('no playlist');" +
