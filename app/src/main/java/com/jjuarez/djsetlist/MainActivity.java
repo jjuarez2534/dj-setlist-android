@@ -35,6 +35,7 @@ public class MainActivity extends Activity {
     private int currentTrackIndex = 0;
     private int successCount = 0;
     private boolean isProcessing = false;
+    private boolean isClickingPlaylist = false;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -132,7 +133,8 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (isProcessing && url.contains("soundcloud.com") && !url.contains("github.io")) {
+                if (isProcessing && !isClickingPlaylist && url.contains("soundcloud.com") && !url.contains("github.io")) {
+                    isClickingPlaylist = true;
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() { clickAddToPlaylist(view); }
@@ -208,6 +210,7 @@ public class MainActivity extends Activity {
     }
 
     private void loadNextTrack() {
+        isClickingPlaylist = false;
         if (pendingTrackUrls == null || currentTrackIndex >= pendingTrackUrls.length) {
             isProcessing = false;
             showCompletionAndReturn();
@@ -284,17 +287,9 @@ public class MainActivity extends Activity {
             "          target.click();" +
             "          toast('Track " + trackNum + " added!', true);" +
             "          setTimeout(function(){" +
-            "            var closeBtn = document.querySelector('.modal__closeButton, [aria-label=\"Close\"], .sc-close-icon, button[title=\"Close\"]');" +
-            "            if (!closeBtn) {" +
-            "              var btns = document.querySelectorAll('button');" +
-            "              for (var k=0; k<btns.length; k++) {" +
-            "                var t = (btns[k].textContent || btns[k].getAttribute('aria-label') || '').toLowerCase();" +
-            "                if (t.includes('close') || t.includes('done') || t.includes('save')) { closeBtn = btns[k]; break; }" +
-            "              }" +
-            "            }" +
-            "            if (closeBtn) closeBtn.click();" +
-            "            setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 2000);" +
-            "          }, 2000);" +
+            "            window.location.href = 'https://soundcloud.com';" +
+            "            setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 1500);" +
+            "          }, 1500);" +
             "        } else {" +
             "          toast('Playlist not found');" +
             "          AndroidBridge.onError('no playlist');" +
