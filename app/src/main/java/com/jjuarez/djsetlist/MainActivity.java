@@ -17,6 +17,7 @@ import android.webkit.WebChromeClient.FileChooserParams;
 import android.view.Window;
 import android.view.WindowManager;
 import android.graphics.Color;
+import androidx.browser.customtabs.CustomTabsIntent;
 
 public class MainActivity extends Activity {
 
@@ -30,8 +31,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setStatusBarColor(Color.parseColor("#FF5500"));
 
         webView = new WebView(this);
@@ -54,26 +53,38 @@ public class MainActivity extends Activity {
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                if (url.contains("soundcloud.com") && !url.contains("github.io")) {
-                    injectScript(view);
-                }
+        webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void openSoundCloud() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder()
+                            .setToolbarColor(Color.parseColor("#FF5500"))
+                            .build();
+                        customTabsIntent.launchUrl(MainActivity.this,
+                            Uri.parse("https://soundcloud.com"));
+                    }
+                });
             }
+        }, "AndroidBridge");
 
+        webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                if (url.contains("soundcloud.com") ||
-                    url.contains("github.io") ||
-                    url.contains("workers.dev")) {
+                if (url.contains("github.io") || url.contains("workers.dev")) {
                     return false;
                 }
+                if (url.contains("soundcloud.com")) {
+                    CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder()
+                        .setToolbarColor(Color.parseColor("#FF5500"))
+                        .build();
+                    customTabsIntent.launchUrl(MainActivity.this, request.getUrl());
+                    return true;
+                }
                 try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, request.getUrl());
-                    startActivity(intent);
+                    startActivity(new Intent(Intent.ACTION_VIEW, request.getUrl()));
                 } catch (Exception e) {}
                 return true;
             }
@@ -96,44 +107,6 @@ public class MainActivity extends Activity {
         });
 
         webView.loadUrl(APP_URL);
-    }
-
-    private void injectScript(WebView view) {
-        String script =
-            "(function() {" +
-            "  if (window._djInjected) return;" +
-            "  window._djInjected = true;" +
-            "  function showToast(msg, ok) {" +
-            "    var el = document.createElement('div');" +
-            "    el.textContent = msg;" +
-            "    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + (ok ? '#1db954' : '#FF5500') + ';color:#fff;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:500;z-index:99999;max-width:90vw;text-align:center';" +
-            "    document.body.appendChild(el);" +
-            "    setTimeout(function() { el.remove(); }, 6000);" +
-            "  }" +
-            "  fetch('" + WORKER_URL + "/get-job')" +
-            "  .then(function(r) { return r.json(); })" +
-            "  .then(function(p) {" +
-            "    if (p.error) { showToast('No job found - add tracks first'); return; }" +
-            "    showToast('Adding ' + p.count + ' tracks...');" +
-            "    return fetch('https://api-v2.soundcloud.com/playlists/' + p.playlistId + '?client_id=' + p.clientId + '&app_version=1775786406&app_locale=en', {" +
-            "      method: 'PUT'," +
-            "      headers: { 'Authorization': 'OAuth ' + p.oauth, 'Content-Type': 'application/json' }," +
-            "      body: JSON.stringify({ playlist: { tracks: p.tracks } })" +
-            "    });" +
-            "  })" +
-            "  .then(function(r) {" +
-            "    if (!r) return;" +
-            "    if (r.ok) {" +
-            "      showToast('Done! Tracks added!', true);" +
-            "      fetch('" + WORKER_URL + "/clear-job', { method: 'POST' });" +
-            "    } else {" +
-            "      r.text().then(function(e) { showToast('Error ' + r.status + ': ' + e.substring(0, 80)); });" +
-            "    }" +
-            "  })" +
-            "  .catch(function(e) { showToast('Error: ' + e.message); });" +
-            "})();";
-
-        view.evaluateJavascript(script, null);
     }
 
     @Override
