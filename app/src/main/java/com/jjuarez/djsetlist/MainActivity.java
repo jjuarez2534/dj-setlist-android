@@ -122,8 +122,8 @@ public class MainActivity extends Activity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setUserAgentString(
-            "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         );
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true);
@@ -235,46 +235,64 @@ public class MainActivity extends Activity {
             "    document.body.appendChild(el);" +
             "  }" +
             "  toast('Adding track " + trackNum + " of " + total + "...');" +
-            "  function findBtn(selector, text) {" +
-            "    var el = document.querySelector(selector);" +
-            "    if (!el && text) {" +
-            "      var all = document.querySelectorAll('button, [role=menuitem], li');" +
-            "      for (var i = 0; i < all.length; i++) {" +
-            "        if ((all[i].textContent||'').trim().toLowerCase().includes(text.toLowerCase())) {" +
-            "          el = all[i]; break;" +
-            "        }" +
-            "      }" +
+            "  function findByText(text) {" +
+            "    var all = document.querySelectorAll('button, a, [role=button], [role=menuitem]');" +
+            "    for (var i = 0; i < all.length; i++) {" +
+            "      var t = (all[i].textContent || all[i].title || all[i].getAttribute('aria-label') || '').toLowerCase();" +
+            "      if (t.includes(text.toLowerCase())) return all[i];" +
             "    }" +
-            "    return el;" +
+            "    return null;" +
             "  }" +
             "  function tryAdd(attempt) {" +
             "    attempt = attempt || 0;" +
-            "    if (attempt > 6) { toast('Could not find controls'); AndroidBridge.onError('timeout'); return; }" +
-            "    var moreBtn = findBtn('.sc-button-more', 'more');" +
-            "    if (!moreBtn) { setTimeout(function(){ tryAdd(attempt+1); }, 1000); return; }" +
+            "    if (attempt > 8) { toast('Could not find controls'); AndroidBridge.onError('timeout'); return; }" +
+            "    var moreBtn = document.querySelector('.sc-button-more') || " +
+            "                  document.querySelector('[aria-label=\"More\"]') || " +
+            "                  document.querySelector('[title=\"More\"]') || " +
+            "                  findByText('more');" +
+            "    if (!moreBtn) {" +
+            "      window.scrollTo(0, 300);" +
+            "      setTimeout(function(){ tryAdd(attempt+1); }, 1000);" +
+            "      return;" +
+            "    }" +
             "    moreBtn.click();" +
             "    setTimeout(function() {" +
-            "      var addBtn = findBtn(null, 'add to playlist');" +
-            "      if (!addBtn) addBtn = findBtn(null, 'add to next');" +
+            "      var addBtn = findByText('add to playlist') || findByText('add to set') || findByText('add to');" +
             "      if (!addBtn) { toast('Add to playlist not found'); AndroidBridge.onError('no add btn'); return; }" +
             "      addBtn.click();" +
             "      setTimeout(function() {" +
-            "        var plItems = document.querySelectorAll('[class*=addToPlaylist] li, [class*=playlist] li, .sc-list-item');" +
+            "        var plTitle = '" + pl + "';" +
+            "        var allItems = document.querySelectorAll('li, [role=option], [class*=item]');" +
             "        var target = null;" +
-            "        for (var i = 0; i < plItems.length; i++) {" +
-            "          if ((plItems[i].textContent||'').includes('" + pl + "')) { target = plItems[i]; break; }" +
+            "        for (var i = 0; i < allItems.length; i++) {" +
+            "          var txt = (allItems[i].textContent || '').trim();" +
+            "          if (plTitle && txt.includes(plTitle)) { target = allItems[i]; break; }" +
             "        }" +
-            "        if (!target && plItems.length > 0) target = plItems[0];" +
+            "        if (!target) {" +
+            "          var checkboxes = document.querySelectorAll('[class*=playlist] label, [class*=addTo] label');" +
+            "          if (checkboxes.length > 0) {" +
+            "            for (var j = 0; j < checkboxes.length; j++) {" +
+            "              if (plTitle && (checkboxes[j].textContent||'').includes(plTitle)) {" +
+            "                target = checkboxes[j]; break;" +
+            "              }" +
+            "            }" +
+            "            if (!target) target = checkboxes[0];" +
+            "          }" +
+            "        }" +
             "        if (target) {" +
             "          target.click();" +
             "          toast('Track " + trackNum + " added!', true);" +
-            "          setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 1000);" +
+            "          setTimeout(function(){ AndroidBridge.onPlaylistAdded(); }, 1500);" +
             "        } else {" +
-            "          toast('Playlist not found in menu');" +
-            "          AndroidBridge.onError('no playlist items');" +
+            "          toast('Playlist menu not found - retrying');" +
+            "          setTimeout(function() {" +
+            "            var items2 = document.querySelectorAll('li, [role=option]');" +
+            "            if (items2.length > 0) { items2[0].click(); AndroidBridge.onPlaylistAdded(); }" +
+            "            else AndroidBridge.onError('no items');" +
+            "          }, 1000);" +
             "        }" +
-            "      }, 1500);" +
-            "    }, 800);" +
+            "      }, 2000);" +
+            "    }, 1000);" +
             "  }" +
             "  tryAdd(0);" +
             "})();";
