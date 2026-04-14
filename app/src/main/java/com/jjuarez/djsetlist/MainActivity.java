@@ -295,14 +295,32 @@ public class MainActivity extends Activity {
             "  }" +
             "  function tryAdd(attempt) {" +
             "    attempt = attempt || 0;" +
-            "    if (attempt > 8) { toast('Could not find controls'); AndroidBridge.onError('timeout'); return; }" +
+            "    if (attempt > 8) { " +
+            "      var allBtns = document.querySelectorAll('button');" +
+            "      var btnInfo = [];" +
+            "      for(var x=0;x<Math.min(allBtns.length,10);x++) btnInfo.push((allBtns[x].className||'')+'|'+(allBtns[x].title||'')+'|'+(allBtns[x].getAttribute('aria-label')||''));" +
+            "      toast('Buttons: '+btnInfo.join(' / '));" +
+            "      AndroidBridge.onError('timeout'); return;" +
+            "    }" +
             "    var moreBtn = document.querySelector('.sc-button-more') || " +
+            "                  document.querySelector('button.sc-button-more') || " +
             "                  document.querySelector('[aria-label=\"More\"]') || " +
             "                  document.querySelector('[title=\"More\"]') || " +
-            "                  findByText('more');" +
+            "                  document.querySelector('button[title=\"More\"]');" +
             "    if (!moreBtn) {" +
-            "      window.scrollTo(0, 300);" +
-            "      setTimeout(function(){ tryAdd(attempt+1); }, 1000);" +
+            "      var allBtns2 = document.querySelectorAll('button');" +
+            "      for (var b=0; b<allBtns2.length; b++) {" +
+            "        var cls = allBtns2[b].className || '';" +
+            "        var ttl = allBtns2[b].title || '';" +
+            "        var lbl = allBtns2[b].getAttribute('aria-label') || '';" +
+            "        if (cls.includes('more') || ttl.toLowerCase().includes('more') || lbl.toLowerCase().includes('more')) {" +
+            "          moreBtn = allBtns2[b]; break;" +
+            "        }" +
+            "      }" +
+            "    }" +
+            "    if (!moreBtn) {" +
+            "      window.scrollTo(0, 200);" +
+            "      setTimeout(function(){ tryAdd(attempt+1); }, 1200);" +
             "      return;" +
             "    }" +
             "    moreBtn.click();" +
