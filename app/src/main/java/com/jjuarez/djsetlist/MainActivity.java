@@ -156,7 +156,7 @@ public class MainActivity extends Activity {
                     handler.postDelayed(new Runnable() {
                         @Override
                         public void run() { clickAddToPlaylist(view); }
-                    }, 4000);
+                    }, 6000);
                 }
             }
 
