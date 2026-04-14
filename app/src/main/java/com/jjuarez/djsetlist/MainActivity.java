@@ -107,32 +107,50 @@ public class MainActivity extends Activity {
             }
         }, "AndroidBridge");
 
-        webView.loadUrl(APP_URL);
-    }
+        webView.setWebViewClient(new WebViewClient() {
+            private boolean checkedLogin = false;
 
-    @SuppressLint("SetJavaScriptEnabled")
-    private WebView createWebView() {
-        WebView wv = new WebView(this);
-        WebSettings settings = wv.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
-        settings.setAllowFileAccess(true);
-        settings.setAllowContentAccess(true);
-        settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setUserAgentString(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        );
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true);
-
-        wv.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+
+                if (!checkedLogin && url.contains("soundcloud.com")) {
+                    checkedLogin = true;
+                    view.evaluateJavascript(
+                        "(function(){ return document.cookie; })()",
+                        new android.webkit.ValueCallback<String>() {
+                            @Override
+                            public void onReceiveValue(String cookies) {
+                                if (cookies == null || !cookies.contains("oauth_token")) {
+                                    view.loadUrl("https://soundcloud.com/signin");
+                                } else {
+                                    view.loadUrl(APP_URL);
+                                }
+                            }
+                        }
+                    );
+                    return;
+                }
+
+                if (url.contains("soundcloud.com") && !url.contains("signin") && !url.contains("connect") && !url.contains("github.io")) {
+                    view.evaluateJavascript(
+                        "(function(){ return document.cookie; })()",
+                        new android.webkit.ValueCallback<String>() {
+                            @Override
+                            public void onReceiveValue(String cookies) {
+                                if (cookies != null && cookies.contains("oauth_token") && !checkedLogin) {
+                                    checkedLogin = true;
+                                    CookieManager.getInstance().flush();
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() { view.loadUrl(APP_URL); }
+                                    }, 500);
+                                }
+                            }
+                        }
+                    );
+                }
+
                 if (isProcessing && !isClickingPlaylist && url.contains("soundcloud.com") && !url.contains("github.io")) {
                     isClickingPlaylist = true;
                     handler.postDelayed(new Runnable() {
@@ -154,6 +172,28 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
+
+        webView.loadUrl("https://soundcloud.com");
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private WebView createWebView() {
+        WebView wv = new WebView(this);
+        WebSettings settings = wv.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setUserAgentString(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        );
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(wv, true);
 
         wv.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -180,14 +220,21 @@ public class MainActivity extends Activity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                if (url.contains("soundcloud.com") && !url.contains("signin") &&
-                    !url.contains("login") && !url.contains("connect")) {
-                    CookieManager.getInstance().flush();
-                    handler.postDelayed(new Runnable() {
+                view.evaluateJavascript(
+                    "(function(){ return document.cookie; })()",
+                    new android.webkit.ValueCallback<String>() {
                         @Override
-                        public void run() { closeSoundCloudLogin(); }
-                    }, 1500);
-                }
+                        public void onReceiveValue(String cookies) {
+                            if (cookies != null && cookies.contains("oauth_token")) {
+                                CookieManager.getInstance().flush();
+                                handler.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() { closeSoundCloudLogin(); }
+                                }, 1000);
+                            }
+                        }
+                    }
+                );
             }
         });
 
